@@ -276,6 +276,12 @@ static void ReleaseStartupInfo(CMenuEntry *entry, void *info) {
     FREE(info);
 }
 
+static const AEECLSID g_alwaysShownApps[] = {
+    0x01007029, // Kyocera KCP hidden menu
+    0x01007313, // Sony Ericsson hidden menu
+    0
+};
+
 static void AppUI_ReloadAppList(CAppUIApp *app) {
     CMenuEntryGroup_Clear(app->applicationsGroup);
 
@@ -284,9 +290,20 @@ static void AppUI_ReloadAppList(CAppUIApp *app) {
     ISHELL_EnumAppletInit(shell);
     AEEAppInfo appInfo;
     while (ISHELL_EnumNextApplet(shell, &appInfo)) {
-        if (!app->showHiddenApps &&
-            ((appInfo.wFlags & AFLAG_HIDDEN) || (appInfo.wFlags & AFLAG_SCREENSAVER)))
-            continue;
+        if (!app->showHiddenApps) {
+            boolean isAlwaysShown      = FALSE;
+            const AEECLSID *alwaysShownAppId = g_alwaysShownApps;
+            while (*alwaysShownAppId) {
+                if (appInfo.cls == *alwaysShownAppId) {
+                    isAlwaysShown = TRUE;
+                    break;
+                }
+                alwaysShownAppId++;
+            }
+            if (!isAlwaysShown && (appInfo.wFlags & AFLAG_HIDDEN || appInfo.wFlags & AFLAG_SCREENSAVER)) {
+                continue;
+            }
+        }
         if (appInfo.cls == app->applet.clsID) continue;
 
         AECHAR appName[64];
